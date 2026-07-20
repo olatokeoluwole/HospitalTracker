@@ -1,0 +1,6 @@
+{
+  "name": "Hospital Inventory Tracker",
+  "description": "Hospital drug inventory management system with doctor, dispensary, and admin roles. Tracks prescriptions, dispensing, and missing inventory.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

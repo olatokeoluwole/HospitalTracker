@@ -1,0 +1,62 @@
+{
+  "project_name": "Hospital Inventory Tracker",
+  "collections": [
+    {
+      "name": "users",
+      "document_structure": {
+        "email": "string",
+        "name": "string",
+        "role": "string ('admin' | 'doctor' | 'dispensary')"
+      },
+      "description": "User profiles and roles"
+    },
+    {
+      "name": "drugs",
+      "document_structure": {
+        "name": "string",
+        "quantity": "number",
+        "createdAt": "timestamp"
+      },
+      "description": "Inventory of drugs in the hospital"
+    },
+    {
+      "name": "prescriptions",
+      "document_structure": {
+        "doctorId": "string",
+        "doctorName": "string",
+        "patientName": "string",
+        "drugId": "string",
+        "drugName": "string",
+        "quantity": "number",
+        "status": "string ('pending' | 'dispensed')",
+        "createdAt": "timestamp"
+      },
+      "description": "Prescriptions made by doctors"
+    },
+    {
+      "name": "dispense_records",
+      "document_structure": {
+        "prescriptionId": "string",
+        "dispensaryId": "string",
+        "dispensaryName": "string",
+        "drugId": "string",
+        "drugName": "string",
+        "quantityDispensed": "number",
+        "createdAt": "timestamp"
+      },
+      "description": "Records of drugs dispensed"
+    },
+    {
+      "name": "purchases",
+      "document_structure": {
+        "adminId": "string",
+        "adminName": "string",
+        "drugId": "string",
+        "drugName": "string",
+        "quantityPurchased": "number",
+        "createdAt": "timestamp"
+      },
+      "description": "Records of drugs purchased by admin"
+    }
+  ]
+}
