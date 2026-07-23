@@ -124,8 +124,8 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
           quantity: newQty
         });
 
-        // Trigger email notification if stock drops to 3 or below
-        if (currentQty > 3 && newQty <= 3) {
+        // Trigger email notification if stock is 3 or below and decreasing
+        if (newQty <= 3 && newQty < currentQty) {
           fetch('/api/notify-low-stock', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

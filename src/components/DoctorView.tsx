@@ -12,6 +12,7 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
   const [selectedDrug, setSelectedDrug] = useState('');
   const [patientName, setPatientName] = useState('');
   const [quantity, setQuantity] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const unsubDrugs = onSnapshot(collection(db, 'drugs'), (snap) => {
@@ -31,9 +32,10 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
 
   const handlePrescribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDrug || !patientName || quantity <= 0) return;
+    if (!selectedDrug || !patientName || quantity <= 0 || isSubmitting) return;
     
     try {
+      setIsSubmitting(true);
       const drug = drugs.find(d => d.id === selectedDrug);
       if (!drug) return;
 
@@ -54,6 +56,8 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
     } catch (err) {
       console.error(err);
       alert('Error creating prescription');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -164,10 +168,10 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={selectedDrug ? (quantity > drugs.find(d => d.id === selectedDrug)!.quantity) : false}
+                    disabled={isSubmitting || (selectedDrug ? (quantity > drugs.find(d => d.id === selectedDrug)!.quantity) : false)}
                     className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
-                    Authorize & Send to Dispensary
+                    {isSubmitting ? 'Sending...' : 'Authorize & Send to Dispensary'}
                   </button>
                 </form>
               </div>
