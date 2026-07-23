@@ -21,6 +21,10 @@ service cloud.firestore {
       return isAuthenticated() && getUserRole() == 'dispensary';
     }
 
+    function isStore() {
+      return isAuthenticated() && getUserRole() == 'store';
+    }
+
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
@@ -53,6 +57,11 @@ service cloud.firestore {
     match /audits/{auditId} {
       allow read: if isAuthenticated();
       allow create: if isAdmin();
+    }
+
+    match /internal_transfers/{transferId} {
+      allow read: if isAuthenticated();
+      allow create: if isStore() || isAdmin();
     }
 
     match /staff_roles/{email} {

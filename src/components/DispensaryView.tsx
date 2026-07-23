@@ -5,7 +5,7 @@ import { UserProfile, Prescription } from '../types';
 import { Check, Clock, PackageOpen } from 'lucide-react';
 import { format } from 'date-fns';
 
-export default function DispensaryView({ profile }: { profile: UserProfile }) {
+export default function DispensaryView({ profile, readOnly = false }: { profile: UserProfile, readOnly?: boolean }) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -41,12 +41,13 @@ export default function DispensaryView({ profile }: { profile: UserProfile }) {
       const drugSnap = await getDoc(drugRef);
       
       if (drugSnap.exists()) {
-        const currentQty = drugSnap.data().quantity || 0;
+        const drugData = drugSnap.data();
+        const currentQty = drugData.dispensaryQuantity || 0;
         const newQty = currentQty - prescription.quantity;
         
         // Update inventory quantity
         await updateDoc(drugRef, {
-          quantity: newQty
+          dispensaryQuantity: newQty
         });
 
         // Trigger email notification if stock is 3 or below and decreasing
@@ -63,7 +64,7 @@ export default function DispensaryView({ profile }: { profile: UserProfile }) {
       } else {
         // Fallback update if doc exists but getDoc fails
         await updateDoc(doc(db, 'drugs', prescription.drugId), {
-          quantity: increment(-prescription.quantity)
+          dispensaryQuantity: increment(-prescription.quantity)
         });
       }
       
@@ -101,14 +102,16 @@ export default function DispensaryView({ profile }: { profile: UserProfile }) {
                   <p className="text-sm font-bold text-slate-800">{p.drugName} ({p.quantity})</p>
                   <p className="text-[11px] text-slate-500">Patient: {p.patientName}</p>
                   <p className="text-[10px] text-slate-400 mt-0.5">{format(p.createdAt, 'MMM d, h:mm a')}</p>
-                  <button
-                    onClick={() => handleDispense(p)}
-                    disabled={processingId === p.id}
-                    className="mt-2 w-full py-1.5 border border-slate-900 text-slate-900 rounded text-[11px] font-bold hover:bg-slate-900 hover:text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
-                  >
-                    <PackageOpen className="w-3 h-3" />
-                    {processingId === p.id ? 'Processing...' : 'Record Dispensed Drug'}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      onClick={() => handleDispense(p)}
+                      disabled={processingId === p.id}
+                      className="mt-2 w-full py-1.5 border border-slate-900 text-slate-900 rounded text-[11px] font-bold hover:bg-slate-900 hover:text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      <PackageOpen className="w-3 h-3" />
+                      {processingId === p.id ? 'Processing...' : 'Record Dispensed Drug'}
+                    </button>
+                  )}
                 </div>
               ))}
               {pending.length === 0 && (

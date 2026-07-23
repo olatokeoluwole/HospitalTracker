@@ -1,9 +1,13 @@
+import React from "react";
 import { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, doc, setDoc, addDoc, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { UserProfile, Drug, PurchaseRecord, DispenseRecord, AuditReport } from '../types';
 import { Package, Plus, AlertTriangle, CheckCircle2, UserX, Users } from 'lucide-react';
 import { format } from 'date-fns';
+import DoctorView from './DoctorView';
+import StoreView from './StoreView';
+import DispensaryView from './DispensaryView';
 
 export default function AdminView({ profile }: { profile: UserProfile }) {
   const [drugs, setDrugs] = useState<Drug[]>([]);
@@ -15,6 +19,8 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
   const [newDrugName, setNewDrugName] = useState('');
   const [newDrugUnit, setNewDrugUnit] = useState('');
   
+  const [activeTab, setActiveTab] = useState<'admin' | 'store' | 'dispensary' | 'doctor'>('admin');
+
   const [selectedDrug, setSelectedDrug] = useState('');
   const [purchaseQuantity, setPurchaseQuantity] = useState(0);
 
@@ -80,7 +86,8 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
       const drugRef = doc(collection(db, 'drugs'));
       await setDoc(drugRef, {
         name: newDrugName,
-        quantity: 0,
+        storeQuantity: 0,
+        dispensaryQuantity: 0,
         unit: newDrugUnit || 'units',
         createdAt: Date.now()
       });
@@ -117,11 +124,12 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
       const drugRef = doc(db, 'drugs', drug.id);
       const drugSnap = await getDoc(drugRef);
       if (drugSnap.exists()) {
-        const currentQty = drugSnap.data().quantity || 0;
+        const d = drugSnap.data();
+        const currentQty = d.storeQuantity !== undefined ? d.storeQuantity : (d.quantity || 0);
         const newQty = currentQty - auditMissingQty;
         
         await updateDoc(drugRef, {
-          quantity: newQty
+          storeQuantity: newQty
         });
 
         // Trigger email notification if stock is 3 or below and decreasing
@@ -137,7 +145,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
         }
       } else {
         await updateDoc(drugRef, {
-          quantity: increment(-auditMissingQty)
+          storeQuantity: increment(-auditMissingQty)
         });
       }
       
@@ -170,7 +178,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
       // Update inventory
       const drugRef = doc(db, 'drugs', drug.id);
       await updateDoc(drugRef, {
-        quantity: increment(purchaseQuantity)
+        storeQuantity: increment(purchaseQuantity)
       });
       
       setSelectedDrug('');
@@ -218,7 +226,35 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="flex border-b border-slate-300">
+        <button
+          className={`px-4 py-2 font-bold text-xs uppercase ${activeTab === 'admin' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          onClick={() => setActiveTab('admin')}
+        >
+          Admin Dashboard
+        </button>
+        <button
+          className={`px-4 py-2 font-bold text-xs uppercase ${activeTab === 'store' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          onClick={() => setActiveTab('store')}
+        >
+          Store View (Read Only)
+        </button>
+        <button
+          className={`px-4 py-2 font-bold text-xs uppercase ${activeTab === 'dispensary' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          onClick={() => setActiveTab('dispensary')}
+        >
+          Dispensary View (Read Only)
+        </button>
+        <button
+          className={`px-4 py-2 font-bold text-xs uppercase ${activeTab === 'doctor' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+          onClick={() => setActiveTab('doctor')}
+        >
+          Doctor View (Read Only)
+        </button>
+      </div>
+
+      {activeTab === 'admin' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Registration & Intake */}
         <div className="lg:col-span-1 flex flex-col gap-4">
           <section className="flex flex-col bg-white rounded-lg border border-slate-300 shadow-sm overflow-hidden">
@@ -402,6 +438,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                 >
                   <option value="doctor">Doctor</option>
                   <option value="dispensary">Dispensary</option>
+                  <option value="store">Store</option>
                   <option value="admin">Admin</option>
                 </select>
                 <button
@@ -452,6 +489,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                           <option value="pending">Pending</option>
                           <option value="doctor">Doctor</option>
                           <option value="dispensary">Dispensary</option>
+                          <option value="store">Store</option>
                           <option value="admin">Admin</option>
                         </select>
                       </td>
@@ -486,7 +524,9 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                     <th className="px-4 py-3 text-right">Purchased</th>
                     <th className="px-4 py-3 text-right">Dispensed</th>
                     <th className="px-4 py-3 text-right">Lost</th>
-                    <th className="px-4 py-3 text-right">System Stock</th>
+                    <th className="px-4 py-3 text-right">Store Qty</th>
+                    <th className="px-4 py-3 text-right">Dispensary Qty</th>
+                    <th className="px-4 py-3 text-right">System Total</th>
                     <th className="px-4 py-3 text-right">Unaccounted</th>
                   </tr>
                 </thead>
@@ -497,7 +537,10 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                     const totalLost = audits.filter(a => a.drugId === drug.id).reduce((sum, a) => sum + a.discrepancy, 0);
                     
                     const expectedStock = totalPurchased - totalDispensed - totalLost;
-                    const unaccounted = drug.quantity - expectedStock;
+                    const storeQty = drug.storeQuantity !== undefined ? drug.storeQuantity : (drug.quantity || 0);
+                    const dispQty = drug.dispensaryQuantity || 0;
+                    const systemStock = storeQty + dispQty;
+                    const unaccounted = systemStock - expectedStock;
 
                     return (
                       <tr key={drug.id} className="hover:bg-slate-50">
@@ -507,7 +550,9 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                         <td className="px-4 py-3 text-right text-slate-600">{totalPurchased}</td>
                         <td className="px-4 py-3 text-right text-slate-600">{totalDispensed}</td>
                         <td className="px-4 py-3 text-right text-red-600 font-medium">{totalLost > 0 ? totalLost : '-'}</td>
-                        <td className="px-4 py-3 text-right font-medium text-slate-900">{drug.quantity}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-900">{storeQty}</td>
+                        <td className="px-4 py-3 text-right font-medium text-slate-900">{dispQty}</td>
+                        <td className="px-4 py-3 text-right font-medium text-indigo-700">{systemStock}</td>
                         <td className="px-4 py-3 text-right font-bold">
                           {unaccounted !== 0 ? (
                             <span className="inline-flex items-center text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px]">
@@ -522,7 +567,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                   })}
                   {drugs.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-4 py-4 text-center text-slate-500">No drugs registered yet.</td>
+                      <td colSpan={8} className="px-4 py-4 text-center text-slate-500">No drugs registered yet.</td>
                     </tr>
                   )}
                 </tbody>
@@ -558,6 +603,11 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
           </section>
         </div>
       </div>
+      )}
+
+      {activeTab === 'store' && <StoreView profile={profile} readOnly={true} />}
+      {activeTab === 'dispensary' && <DispensaryView profile={profile} readOnly={true} />}
+      {activeTab === 'doctor' && <DoctorView profile={profile} readOnly={true} />}
     </div>
   );
 }

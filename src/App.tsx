@@ -8,6 +8,7 @@ import AuthView from './components/AuthView';
 import Layout from './components/Layout';
 import DoctorView from './components/DoctorView';
 import DispensaryView from './components/DispensaryView';
+import StoreView from './components/StoreView';
 import AdminView from './components/AdminView';
 
 export default function App() {
@@ -71,6 +72,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={
             profile.role === 'admin' ? <AdminView profile={profile} /> :
+            profile.role === 'store' ? <StoreView profile={profile} /> :
             profile.role === 'doctor' ? <DoctorView profile={profile} /> :
             profile.role === 'dispensary' ? <DispensaryView profile={profile} /> :
             <div className="flex flex-col items-center justify-center h-full text-slate-500 bg-white rounded-lg shadow-sm border border-slate-300 p-8">

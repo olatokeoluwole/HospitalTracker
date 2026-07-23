@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'doctor' | 'dispensary' | 'pending';
+export type Role = 'admin' | 'doctor' | 'dispensary' | 'store' | 'pending';
 
 export interface UserProfile {
   id: string;
@@ -10,8 +10,20 @@ export interface UserProfile {
 export interface Drug {
   id: string;
   name: string;
-  quantity: number;
+  storeQuantity: number;
+  dispensaryQuantity: number;
+  quantity?: number;
   unit?: string;
+  createdAt: number;
+}
+
+export interface InternalTransferRecord {
+  id: string;
+  storeUserId: string;
+  storeUserName: string;
+  drugId: string;
+  drugName: string;
+  quantityTransferred: number;
   createdAt: number;
 }
 

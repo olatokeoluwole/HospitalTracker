@@ -1,10 +1,11 @@
+import React from "react";
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
 import { UserProfile, Drug, Prescription } from '../types';
 import { Activity, Search, AlertCircle } from 'lucide-react';
 
-export default function DoctorView({ profile }: { profile: UserProfile }) {
+export default function DoctorView({ profile, readOnly = false }: { profile: UserProfile, readOnly?: boolean }) {
   const [drugs, setDrugs] = useState<Drug[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [search, setSearch] = useState('');
@@ -98,8 +99,8 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
                   {filteredDrugs.map(drug => (
                     <tr key={drug.id} className="hover:bg-slate-50">
                       <td className="py-2 font-medium text-slate-800">{drug.name}</td>
-                      <td className={`py-2 text-right font-medium ${drug.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {drug.quantity > 0 ? `${drug.quantity} ${drug.unit}` : 'Out of Stock'}
+                      <td className={`py-2 text-right font-medium ${(drug.dispensaryQuantity || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {(drug.dispensaryQuantity || 0) > 0 ? `${drug.dispensaryQuantity || 0} ${drug.unit}` : 'Out of Stock'}
                       </td>
                     </tr>
                   ))}
@@ -142,8 +143,8 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
                     >
                       <option value="">-- Select Drug --</option>
                       {drugs.map(d => (
-                        <option key={d.id} value={d.id} disabled={d.quantity <= 0}>
-                          {d.name} ({d.quantity} {d.unit} in stock)
+                        <option key={d.id} value={d.id} disabled={(d.dispensaryQuantity || 0) <= 0}>
+                          {d.name} ({(d.dispensaryQuantity || 0)} {d.unit} in stock)
                         </option>
                       ))}
                     </select>
@@ -159,7 +160,7 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
                         onChange={e => setQuantity(parseInt(e.target.value))}
                         className="w-full p-2 border border-blue-200 rounded text-xs focus:outline-none focus:border-blue-400"
                       />
-                      {selectedDrug && quantity > 0 && drugs.find(d => d.id === selectedDrug)!.quantity < quantity && (
+                      {selectedDrug && quantity > 0 && (drugs.find(d => d.id === selectedDrug)!.dispensaryQuantity || 0) < quantity && (
                         <p className="mt-1 text-[10px] text-red-600 flex items-center">
                           <AlertCircle className="w-3 h-3 mr-1" /> Requested exceeds stock
                         </p>
@@ -168,7 +169,7 @@ export default function DoctorView({ profile }: { profile: UserProfile }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={isSubmitting || (selectedDrug ? (quantity > drugs.find(d => d.id === selectedDrug)!.quantity) : false)}
+                    disabled={readOnly || isSubmitting || (selectedDrug ? (quantity > (drugs.find(d => d.id === selectedDrug)!.dispensaryQuantity || 0)) : false)}
                     className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {isSubmitting ? 'Sending...' : 'Authorize & Send to Dispensary'}
