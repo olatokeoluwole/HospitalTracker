@@ -18,6 +18,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
   const [staffRoles, setStaffRoles] = useState<any[]>([]);
   const [newDrugName, setNewDrugName] = useState('');
   const [newDrugUnit, setNewDrugUnit] = useState('');
+  const [newDrugCategory, setNewDrugCategory] = useState<'medication' | 'consumable'>('medication');
   
   const [activeTab, setActiveTab] = useState<'admin' | 'store' | 'dispensary' | 'doctor'>('admin');
 
@@ -89,10 +90,12 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
         storeQuantity: 0,
         dispensaryQuantity: 0,
         unit: newDrugUnit || 'units',
+        category: newDrugCategory,
         createdAt: Date.now()
       });
       setNewDrugName('');
       setNewDrugUnit('');
+      setNewDrugCategory('medication');
     } catch (err) {
       console.error(err);
       alert('Error adding drug');
@@ -273,7 +276,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                   <input
                     type="text"
                     required
-                    placeholder="Drug Name (e.g. Amoxicillin)"
+                    placeholder="Item Name (e.g. Amoxicillin, Gloves)"
                     value={newDrugName}
                     onChange={e => setNewDrugName(e.target.value)}
                     className="w-full p-2 border border-slate-300 rounded text-xs bg-slate-50 focus:outline-none focus:border-slate-400"
@@ -283,9 +286,17 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                       type="text"
                       value={newDrugUnit}
                       onChange={e => setNewDrugUnit(e.target.value.replace(/[0-9]/g, ''))}
-                      placeholder="Unit (e.g. pills)"
+                      placeholder="Unit (e.g. pills, boxes)"
                       className="w-full p-2 border border-slate-300 rounded text-xs bg-slate-50 focus:outline-none focus:border-slate-400"
                     />
+                    <select
+                      value={newDrugCategory}
+                      onChange={e => setNewDrugCategory(e.target.value as 'medication' | 'consumable')}
+                      className="w-full p-2 border border-slate-300 rounded text-xs bg-slate-50 focus:outline-none focus:border-slate-400"
+                    >
+                      <option value="medication">Medication</option>
+                      <option value="consumable">Consumable</option>
+                    </select>
                     <button
                       type="submit"
                       className="whitespace-nowrap px-4 py-2 bg-slate-800 text-white rounded text-xs font-bold hover:bg-slate-900 transition-colors"
@@ -483,7 +494,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                         <select
                           value={u.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value, u.isRegistered)}
-                          disabled={u.email.toLowerCase() === 'olatokeoluwole@gmail.com'}
+                          disabled={u.email.toLowerCase() === 'oreloretechcustomerservice@gmail.com'}
                           className="p-1 border border-slate-300 rounded text-[10px] bg-white focus:outline-none focus:border-slate-400 disabled:opacity-50 disabled:bg-slate-100"
                         >
                           <option value="pending">Pending</option>
@@ -520,7 +531,8 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Drug Name</th>
+                    <th className="px-4 py-3">Item Name</th>
+                    <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3 text-right">Purchased</th>
                     <th className="px-4 py-3 text-right">Dispensed</th>
                     <th className="px-4 py-3 text-right">Lost</th>
@@ -547,6 +559,9 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                         <td className="px-4 py-3 font-medium text-slate-800">
                           {drug.name} <span className="text-slate-400 font-normal ml-1">({drug.unit})</span>
                         </td>
+                        <td className="px-4 py-3 text-slate-600 capitalize">
+                          {drug.category || 'medication'}
+                        </td>
                         <td className="px-4 py-3 text-right text-slate-600">{totalPurchased}</td>
                         <td className="px-4 py-3 text-right text-slate-600">{totalDispensed}</td>
                         <td className="px-4 py-3 text-right text-red-600 font-medium">{totalLost > 0 ? totalLost : '-'}</td>
@@ -567,7 +582,7 @@ export default function AdminView({ profile }: { profile: UserProfile }) {
                   })}
                   {drugs.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-4 text-center text-slate-500">No drugs registered yet.</td>
+                      <td colSpan={9} className="px-4 py-4 text-center text-slate-500">No drugs registered yet.</td>
                     </tr>
                   )}
                 </tbody>

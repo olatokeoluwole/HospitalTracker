@@ -14,6 +14,18 @@ export interface Drug {
   dispensaryQuantity: number;
   quantity?: number;
   unit?: string;
+  category?: 'medication' | 'consumable';
+  createdAt: number;
+}
+
+export interface ConsumableUsageRecord {
+  id: string;
+  userId: string;
+  userName: string;
+  drugId: string;
+  drugName: string;
+  quantityUsed: number;
+  department?: string;
   createdAt: number;
 }
 

@@ -57,13 +57,24 @@ export default function StoreView({ profile, readOnly = false }: { profile: User
         dispensaryQuantity: increment(transferQuantity)
       };
       
+      const newStoreQty = storeQty - transferQuantity;
+
       // Migrate legacy quantity on first transfer
       if (drug.storeQuantity === undefined) {
-         payload.storeQuantity = storeQty - transferQuantity;
+         payload.storeQuantity = newStoreQty;
          payload.dispensaryQuantity = transferQuantity;
       }
 
       await updateDoc(drugRef, payload);
+
+      // Trigger email notification if stock is 3 or below and decreasing
+      if (newStoreQty <= 3 && storeQty > 3) {
+        fetch('/api/notify-low-stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ drugName: drug.name, quantity: newStoreQty })
+        }).catch(err => console.error("Failed to trigger low stock notification", err));
+      }
       
       setSelectedDrug('');
       setTransferQuantity(0);
@@ -94,7 +105,7 @@ export default function StoreView({ profile, readOnly = false }: { profile: User
                   disabled={readOnly}
                   className="w-full p-2 border border-slate-300 rounded text-xs bg-white focus:outline-none focus:border-slate-400 disabled:opacity-50"
                 >
-                  <option value="">-- Select Drug --</option>
+                  <option value="">-- Select Item --</option>
                   {drugs.map(d => (
                     <option key={d.id} value={d.id}>
                       {d.name} (Available: {d.storeQuantity !== undefined ? d.storeQuantity : (d.quantity || 0)})
@@ -137,7 +148,8 @@ export default function StoreView({ profile, readOnly = false }: { profile: User
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Drug Name</th>
+                    <th className="px-4 py-3">Item Name</th>
+                    <th className="px-4 py-3">Category</th>
                     <th className="px-4 py-3 text-right">Store Qty</th>
                   </tr>
                 </thead>
@@ -147,6 +159,9 @@ export default function StoreView({ profile, readOnly = false }: { profile: User
                       <td className="px-4 py-3 font-medium text-slate-800">
                         {drug.name} <span className="text-slate-400 font-normal ml-1">({drug.unit})</span>
                       </td>
+                      <td className="px-4 py-3 text-slate-600 capitalize">
+                        {drug.category || 'medication'}
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-slate-900">
                         {drug.storeQuantity !== undefined ? drug.storeQuantity : (drug.quantity || 0)}
                       </td>
@@ -154,7 +169,7 @@ export default function StoreView({ profile, readOnly = false }: { profile: User
                   ))}
                   {drugs.length === 0 && (
                     <tr>
-                      <td colSpan={2} className="px-4 py-4 text-center text-slate-500">No drugs available.</td>
+                      <td colSpan={3} className="px-4 py-4 text-center text-slate-500">No items available.</td>
                     </tr>
                   )}
                 </tbody>

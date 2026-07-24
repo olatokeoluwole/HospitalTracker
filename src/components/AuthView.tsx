@@ -16,7 +16,7 @@ export default function AuthView({ onLogin }: { onLogin: () => void }) {
 
   const getAssignedRole = async (userEmail: string): Promise<Role> => {
     let assignedRole: Role = 'pending';
-    if (userEmail.toLowerCase() === 'olatokeoluwole@gmail.com') {
+    if (userEmail.toLowerCase() === 'oreloretechcustomerservice@gmail.com' || userEmail.toLowerCase() === 'olatokeoluwole@gmail.com') {
       return 'admin';
     }
     try {

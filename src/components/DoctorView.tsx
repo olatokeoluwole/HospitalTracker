@@ -1,7 +1,7 @@
 import React from "react";
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, onSnapshot, addDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { UserProfile, Drug, Prescription } from '../types';
 import { Activity, Search, AlertCircle } from 'lucide-react';
 
@@ -14,6 +14,10 @@ export default function DoctorView({ profile, readOnly = false }: { profile: Use
   const [patientName, setPatientName] = useState('');
   const [quantity, setQuantity] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [selectedConsumable, setSelectedConsumable] = useState('');
+  const [consumableQuantity, setConsumableQuantity] = useState(0);
+  const [isLoggingConsumable, setIsLoggingConsumable] = useState(false);
 
   useEffect(() => {
     const unsubDrugs = onSnapshot(collection(db, 'drugs'), (snap) => {
@@ -62,7 +66,59 @@ export default function DoctorView({ profile, readOnly = false }: { profile: Use
     }
   };
 
+  const handleLogConsumable = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedConsumable || consumableQuantity <= 0 || isLoggingConsumable) return;
+    
+    try {
+      setIsLoggingConsumable(true);
+      const drug = drugs.find(d => d.id === selectedConsumable);
+      if (!drug) return;
+
+      await addDoc(collection(db, 'consumable_usage'), {
+        userId: profile.id,
+        userName: profile.name,
+        drugId: drug.id,
+        drugName: drug.name,
+        quantityUsed: consumableQuantity,
+        createdAt: Date.now()
+      });
+      
+      const currentQty = drug.dispensaryQuantity || 0;
+      const newQty = currentQty - consumableQuantity;
+      
+      // deduct from inventory
+      const drugRef = doc(db, 'drugs', drug.id);
+      await updateDoc(drugRef, {
+        dispensaryQuantity: newQty
+      });
+      
+      // trigger alert if low
+      if (newQty <= 3 && newQty < currentQty) {
+        fetch('/api/notify-low-stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            drugName: drug.name,
+            quantity: newQty
+          })
+        }).catch(e => console.error("Failed to notify low stock", e));
+      }
+
+      setSelectedConsumable('');
+      setConsumableQuantity(0);
+      alert('Consumable usage logged successfully.');
+    } catch (err) {
+      console.error(err);
+      alert('Error logging consumable usage.');
+    } finally {
+      setIsLoggingConsumable(false);
+    }
+  };
+
   const filteredDrugs = drugs.filter(d => d.name.toLowerCase().includes(search.toLowerCase()));
+  const medicationOptions = drugs.filter(d => d.category !== 'consumable');
+  const consumableOptions = drugs.filter(d => d.category === 'consumable');
   const myPrescriptions = prescriptions.filter(p => p.doctorId === profile.id);
 
   return (
@@ -141,8 +197,8 @@ export default function DoctorView({ profile, readOnly = false }: { profile: Use
                       onChange={e => setSelectedDrug(e.target.value)}
                       className="p-2 border border-blue-200 rounded text-xs bg-white focus:outline-none focus:border-blue-400"
                     >
-                      <option value="">-- Select Drug --</option>
-                      {drugs.map(d => (
+                      <option value="">-- Select Medication --</option>
+                      {medicationOptions.map(d => (
                         <option key={d.id} value={d.id} disabled={(d.dispensaryQuantity || 0) <= 0}>
                           {d.name} ({(d.dispensaryQuantity || 0)} {d.unit} in stock)
                         </option>
@@ -173,6 +229,47 @@ export default function DoctorView({ profile, readOnly = false }: { profile: Use
                     className="w-full py-2 bg-blue-600 text-white rounded text-xs font-bold shadow-sm hover:bg-blue-700 disabled:opacity-50 transition-colors"
                   >
                     {isSubmitting ? 'Sending...' : 'Authorize & Send to Dispensary'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 mt-4 space-y-3">
+                <h3 className="text-xs font-bold text-emerald-800 mb-2">Log Consumable Usage</h3>
+                <form onSubmit={handleLogConsumable} className="space-y-3">
+                  <div className="grid grid-cols-1 gap-2">
+                    <select
+                      required
+                      value={selectedConsumable}
+                      onChange={e => setSelectedConsumable(e.target.value)}
+                      className="p-2 border border-emerald-200 rounded text-xs bg-white focus:outline-none focus:border-emerald-400"
+                    >
+                      <option value="">-- Select Consumable --</option>
+                      {consumableOptions.map(d => (
+                        <option key={d.id} value={d.id} disabled={(d.dispensaryQuantity || 0) <= 0}>
+                          {d.name} ({(d.dispensaryQuantity || 0)} {d.unit} in stock)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1">
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        placeholder="Quantity Used"
+                        value={consumableQuantity || ''}
+                        onChange={e => setConsumableQuantity(parseInt(e.target.value))}
+                        className="w-full p-2 border border-emerald-200 rounded text-xs focus:outline-none focus:border-emerald-400"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={readOnly || isLoggingConsumable || (selectedConsumable ? (consumableQuantity > (drugs.find(d => d.id === selectedConsumable)!.dispensaryQuantity || 0)) : false)}
+                    className="w-full py-2 bg-emerald-600 text-white rounded text-xs font-bold shadow-sm hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isLoggingConsumable ? 'Logging...' : 'Log Usage'}
                   </button>
                 </form>
               </div>

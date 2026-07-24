@@ -28,7 +28,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin()) && (resource.data.email != 'oreloretechcustomerservice@gmail.com' || request.resource.data.role == resource.data.role);
     }
 
     match /drugs/{drugId} {
@@ -64,9 +64,14 @@ service cloud.firestore {
       allow create: if isStore() || isAdmin();
     }
 
+    match /consumable_usage/{usageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated(); // Allow any authenticated user (Doctor, Dispensary) to log usage
+    }
+
     match /staff_roles/{email} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAdmin() && (email != 'oreloretechcustomerservice@gmail.com' || resource == null || request.resource.data.role == resource.data.role);
     }
   }
 }
